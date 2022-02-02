@@ -1,0 +1,551 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 02/02/2022 18:44:21
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Door's Security System
+00000000                             3  * Written by : Zakaria Ziani + Imane ElMaksour + Mounim Saadioui + Salma Garmouti
+00000000                             4  * Date       :
+00000000                             5  * Description: 
+00000000                             6  *-----------------------------------------------------------
+00000000  =0041EB00                  7  NOON    EQU 12*60*60*100    noon in 100's of a second
+00000000                             8  
+00000000                             9  * Delay for hundredths of a second in param 1
+00000000                            10  DELAY   MACRO
+00000000                            11      move.b  #23,d0          trap task 23
+00000000                            12      move.l  #\1,d1          delay amount
+00000000                            13      trap    #15
+00000000                            14      ENDM
+00000000                            15      
+00000000                            16      
+00001000                            17      ORG    $1000
+00001000                            18  START:
+00001000                            19     
+00001000  21FC 000011A6 007C        20      MOVE.L  #VALIDCODE,$07C         INTERRUPTION 7 USED ONLY BY SECURITY (1st from left)
+00001008  21FC 0000112C 0064        21      MOVE.L  #CHECK_OUT,$064         INTERRUPTION 1 USED TO START THE CHECK-OUT WITH CODE (1st from right)
+00001010                            22  
+00001010                            23  
+00001010  103C 0020                 24      MOVE.B  #32,D0   
+00001014  123C 0000                 25      MOVE.B  #0,D1    
+00001018  4E4F                      26      TRAP    #15      HARDWARE WINDOW DISPLAYED
+0000101A                            27      
+0000101A  123C 0001                 28      MOVE.B  #1,D1    
+0000101E  4E4F                      29      TRAP    #15      
+00001020  2841                      30      MOVE.L  D1,A4    A4 = ADDRESS OF 7-SEGMENT DISPLAY 
+00001022                            31      
+00001022                            32      
+00001022  123C 0002                 33      MOVE.B  #2,D1    
+00001026  4E4F                      34      TRAP    #15      
+00001028  2641                      35      MOVE.L  D1,A3    A3 = ADDRESS OF LEDS
+0000102A                            36      
+0000102A                            37      
+0000102A                            38      
+0000102A                            39      
+0000102A                            40      
+0000102A                            41  *--------------------------------------MAIN PROGRAM-------------------------------
+0000102A  4FFA 0422                 42      LEA PILE(PC),A7
+0000102E                            43  
+0000102E                            44  
+0000102E                            45  MAIN
+0000102E  36BC 0000                 46      MOVE #00,(A3)   LEDS OFF
+00001032                            47      
+00001032                            48  
+00001032                            49  
+00001032                            50  *--------------------------------------TIME DISPLAYING----------------------------
+00001032                            51  
+00001032                            52  
+00001032                            53  CLOCK
+00001032  1416                      54      MOVE.B (A6),D2
+00001034                            55  
+00001034                            56  REALTIME
+00001034  244C                      57      MOVE.L  A4,A2
+00001036                            58      REPEAT
+00001036  103C 0008                 59          MOVE.B  #8,D0           READ TIMER, GET 100THS OF A SECOND SINCE MIDNIGHT IN D1.L
+0000103A  4E4F                      60          TRAP    #15
+0000103C                            61          IF.L D1 <HS> #NOON THEN.S
+00001044  0481 0041EB00             62              SUB.L #NOON,D1      TIME = TIME - NOON
+0000104A                            63          ENDI
+0000104A                            64          * CALCULATE TOTAL MINUTES (D5), MINUTES THIS HOUR (D6), SECONDS (D7)
+0000104A  82FC 0064                 65          DIVU    #100,D1         CONVERT TO SECONDS
+0000104E  2801                      66          MOVE.L  D1,D4           SAVE FRACTIONAL SECONDS
+00001050  0281 0000FFFF             67          ANDI.L  #$0000FFFF,D1   DISCARD FRACTIONAL SECONDS
+00001056  82FC 003C                 68          DIVU    #60,D1          CONVERT TO MINUTES
+0000105A  2E01                      69          MOVE.L  D1,D7
+0000105C  7010                      70          MOVE.L  #16,D0  
+0000105E  E0AF                      71          LSR.L   D0,D7           D7 = SECONDS
+00001060  0281 0000FFFF             72          ANDI.L  #$0000FFFF,D1   DISCARD SECONDS FROM D1
+00001066  2A01                      73          MOVE.L  D1,D5           D5 = TOTAL MINUTES
+00001068  82FC 003C                 74          DIVU    #60,D1          CONVERT TO HOURS
+0000106C  2C01                      75          MOVE.L  D1,D6
+0000106E  7010                      76          MOVE.L  #16,D0
+00001070  E0AE                      77          LSR.L   D0,D6           MINUTES THIS HOUR TO D6
+00001072                            78  
+00001072                            79m         DELAY   1               1/100 SEC DELAY TO REDUCE CPU WORKLOAD
+0000107A                            80      UNTIL.W D7 <NE> SECONDS DO  UNTIL A SECOND HAS ELAPSED
+00001082                            81  
+00001082                            82  * UPDATE THE DISPLAY ON THE 7-SEGMENT READOUTS
+00001082                            83  
+00001082                            84  * DISPLAY HOUR AS DIGITS
+00001082  8AFC 003C                 85      DIVU    #60,D5          HOURS AS 1-11 WITH 0 FOR 12
+00001086                            86      IF.W D5 <EQ> #0 THEN.S  IF HOURS = 0
+0000108C  3A3C 000C                 87          MOVE.W  #12,D5      HOURS AS 1-12
+00001090                            88      ENDI
+00001090  163C 000A                 89      MOVE.B  #10,D3          BLANK DIGIT CODE
+00001094                            90      IF.B D5 <HI> #9 THEN.S  IF HOURS > 9
+0000109A  0445 000A                 91          SUB #10,D5      
+0000109E  163C 0001                 92          MOVE.B  #1,D3       DISPLAY A 1
+000010A2                            93      ENDI
+000010A2  6100 02AA                 94      BSR SEGMENT7            HOUR 10S DIGIT
+000010A6  3605                      95      MOVE.W  D5,D3
+000010A8  6100 02A4                 96      BSR SEGMENT7            HOUR 1S DIGIT
+000010AC                            97  
+000010AC                            98  * DASH AFTER HOURS
+000010AC  163C 000B                 99      MOVE.B  #11,D3          DASH DIGIT CODE
+000010B0  6100 029C                100      BSR SEGMENT7            DISPLAY DASH
+000010B4                           101  
+000010B4                           102  * DISPLAY MINUTES AS DIGITS
+000010B4  1006                     103      MOVE.B  D6,D0
+000010B6  6100 0056                104      BSR HEX2BCD
+000010BA  163C 0000                105      MOVE.B  #0,D3           0 DIGIT CODE
+000010BE                           106      IF.B D0 <HI> #9 THEN.S  IF MINUTES > 9
+000010C4  1600                     107          MOVE.B  D0,D3
+000010C6  E80B                     108          LSR.B   #4,D3       10'S MINUTE DIGIT
+000010C8                           109      ENDI
+000010C8  6100 0284                110      BSR SEGMENT7
+000010CC  1600                     111      MOVE.B  D0,D3
+000010CE  C63C 000F                112      AND.B   #$F,D3          1'S MINUTE DIGIT
+000010D2  6100 027A                113      BSR SEGMENT7
+000010D6                           114  
+000010D6                           115  * DASH AFTER MINUTES
+000010D6  163C 000B                116      MOVE.B  #11,D3          DASH DIGIT CODE
+000010DA  6100 0272                117      BSR SEGMENT7            DISPLAY DASH
+000010DE                           118  
+000010DE                           119  * DISPLAY SECONDS AS DIGITS
+000010DE  33C7 00001490            120      MOVE.W  D7,SECONDS      SAVE SECONDS
+000010E4  3007                     121      MOVE.W  D7,D0
+000010E6  6100 0026                122      BSR HEX2BCD
+000010EA  163C 0000                123      MOVE.B  #0,D3           0 DIGIT CODE
+000010EE                           124      IF.B D0 <HI> #9 THEN.S
+000010F4  1600                     125          MOVE.B  D0,D3
+000010F6  E80B                     126          LSR.B   #4,D3       10'S SECONDS DIGIT
+000010F8                           127      ENDI
+000010F8  6100 0254                128      BSR SEGMENT7
+000010FC  1600                     129      MOVE.B  D0,D3
+000010FE  C63C 000F                130      AND.B   #$F,D3          1'S SECOND DIGIT
+00001102  6100 024A                131      BSR SEGMENT7
+00001106                           132      
+00001106  B416                     133      CMP.B (A6),D2
+00001108  6700 FF2A                134      BEQ REALTIME
+0000110C                           135      
+0000110C                           136      
+0000110C  4E75                     137      RTS
+0000110E                           138      
+0000110E                           139      
+0000110E                           140      
+0000110E                           141  *-----------------------------------
+0000110E                           142  * Convert 2 digit Hex to 2 digit BCD
+0000110E                           143  * Pre:  D0.B 2 digit Hex
+0000110E                           144  * Post: D0.B 2 digit BCD
+0000110E                           145  Hex2BCD:
+0000110E  48E7 4000                146      movem.l d1,-(a7)        save registers
+00001112  4241                     147      clr d1
+00001114  C0BC 000000FF            148      and.l   #$00FF,d0
+0000111A  80FC 000A                149      divu    #10,d0
+0000111E  2200                     150      move.l  d0,d1
+00001120  E940                     151      asl.w   #4,d0           shift tens to proper location
+00001122  4841                     152      swap    d1              put units in proper location
+00001124  8001                     153      or.b    d1,d0           combine units with tens
+00001126  4CDF 0002                154      movem.l (a7)+,d1        restore registers
+0000112A  4E75                     155      rts
+0000112C                           156  
+0000112C                           157  
+0000112C                           158  
+0000112C                           159  
+0000112C                           160  
+0000112C                           161  
+0000112C                           162  
+0000112C                           163  
+0000112C                           164  *-------------------------------------CHECK_OUT-----------------------------------
+0000112C                           165  CHECK_OUT
+0000112C                           166  
+0000112C  207A 0322                167      MOVE.L  STORAGE(PC),A0
+00001130  3C3C 0003                168      MOVE #3,D6
+00001134                           169  
+00001134                           170  REPEAT    
+00001134                           171  *Will repeat the message of putting a code until the user is wrong 3 times or it's valid  
+00001134  43FA 032B                172      LEA ENTREZ(PC),A1
+00001138  303C 000E                173      MOVE #14,D0
+0000113C  4E4F                     174      TRAP #15
+0000113E                           175      
+0000113E  2206                     176      MOVE.L D6,D1
+00001140  303C 0003                177      MOVE #3,D0
+00001144  4E4F                     178      TRAP #15
+00001146                           179      
+00001146  43FA 0332                180      LEA TENTATIVES(PC),A1
+0000114A  303C 000E                181      MOVE #14,D0
+0000114E  4E4F                     182      TRAP #15
+00001150                           183     
+00001150  4247                     184      CLR D7
+00001152  6100 0018                185      BSR USER
+00001156                           186      
+00001156  4BFA 02FC                187      LEA ACCES_LIST(PC),A5
+0000115A  207A 02F4                188      MOVE.L STORAGE(PC),A0
+0000115E                           189  
+0000115E  6100 001E                190      BSR COMPARE
+00001162                           191      
+00001162  303C 000E                192      MOVE #14,D0
+00001166  4E4F                     193      TRAP #15
+00001168                           194      
+00001168  FFFF FFFF                195      SIMHALT          
+0000116C                           196      
+0000116C                           197   
+0000116C                           198  USER   
+0000116C  303C 0005                199          MOVE #5,D0
+00001170  4E4F                     200          TRAP #15
+00001172  10C1                     201          MOVE.B D1,(A0)+
+00001174  5247                     202          ADDQ #1,D7
+00001176  BE3C 0004                203          CMP.B #4,D7
+0000117A  66F0                     204          BNE USER
+0000117C  4E75                     205          RTS
+0000117E                           206          
+0000117E                           207          
+0000117E                           208  
+0000117E                           209  COMPARE 
+0000117E  281D                     210          MOVE.L (A5)+,D4
+00001180  2610                     211          MOVE.L (A0),D3
+00001182  B684                     212          CMP.L D4,D3
+00001184  6700 0020                213          BEQ VALIDCODE
+00001188  0C15 0000                214          CMP.B #0,(A5)
+0000118C  6700 0004                215          BEQ WRONGCODE
+00001190  66EC                     216          BNE COMPARE
+00001192                           217          
+00001192                           218          
+00001192                           219  
+00001192                           220  WRONGCODE 
+00001192  5346                     221          SUBQ #1,D6
+00001194  BC7C 0000                222          CMP #0,D6
+00001198  669A                     223          BNE REPEAT            In case we still not in the 3rd attempts failed, we'll repeat
+0000119A  6100 0070                224          BSR CLOSE             Else, CLOSEd is displayed
+0000119E  6100 0130                225          BSR SECONDS_3         for 3 seconds !
+000011A2  6100 FE8A                226          BSR MAIN
+000011A6                           227  
+000011A6                           228  
+000011A6                           229  VALIDCODE 
+000011A6  6100 001C                230          BSR OPEN             In case it's a valid code, OPEn is displayed
+000011AA                           231          
+000011AA                           232  
+000011AA                           233  PUSHTHEDOOR   *------------------Verify is switch 0 is ON (door pushed) before starting the 5sec counter------------*
+000011AA                           234       
+000011AA  103C 0020                235          MOVE.B  #32,D0
+000011AE  123C 0003                236          MOVE.B  #3,D1
+000011B2  4E4F                     237          TRAP    #15
+000011B4  2C41                     238          MOVE.L  D1,A6        A6 = ADRESS OF SWITCH
+000011B6  0C16 0001                239          CMP.B #1,(A6)
+000011BA  66EE                     240          BNE PUSHTHEDOOR
+000011BC                           241          
+000011BC  6100 00EE                242          BSR SECONDS_5       5 seconds starts !
+000011C0  6100 FE6C                243          BSR MAIN
+000011C4                           244        
+000011C4                           245        
+000011C4                           246  
+000011C4                           247  
+000011C4                           248  
+000011C4                           249  *------------Display OPEn in Segment7----------
+000011C4                           250  OPEN    
+000011C4  244C                     251          MOVE.L A4,A2 (SEGMENT7 ADRESS)
+000011C6                           252  
+000011C6  163C 0014                253          MOVE.B  #20,D3          
+000011CA  6100 0182                254          BSR SEGMENT7
+000011CE                           255      
+000011CE  163C 0015                256          MOVE.B  #21,D3          
+000011D2  6100 017A                257          BSR SEGMENT7
+000011D6                           258      
+000011D6  163C 000E                259          MOVE.B  #14,D3          
+000011DA  6100 0172                260          BSR SEGMENT7
+000011DE                           261      
+000011DE  163C 0012                262          MOVE.B  #18,D3          
+000011E2  6100 016A                263          BSR SEGMENT7
+000011E6                           264  
+000011E6  163C 000A                265          MOVE.B  #10,D3          
+000011EA  6100 0162                266          BSR SEGMENT7
+000011EE                           267  
+000011EE  163C 000A                268          MOVE.B  #10,D3          
+000011F2  6100 015A                269          BSR SEGMENT7
+000011F6                           270  
+000011F6  163C 000A                271          MOVE.B  #10,D3      
+000011FA  6100 0152                272          BSR SEGMENT7    
+000011FE                           273  
+000011FE  163C 000A                274          MOVE.B  #10,D3          
+00001202  6100 014A                275          BSR SEGMENT7
+00001206                           276          
+00001206  16BC 0003                277          MOVE.B #3,(A3)          2 LEDS RIGHT 
+0000120A                           278          
+0000120A  4E75                     279          RTS
+0000120C                           280  *------------Display CLOSEd in Segment7----------
+0000120C                           281  CLOSE   
+0000120C  244C                     282          MOVE.L A4,A2 (SEGMENT7 ADRESS)
+0000120E                           283  
+0000120E  163C 000D                284          MOVE.B  #13,D3              
+00001212  6100 013A                285          BSR SEGMENT7
+00001216                           286      
+00001216  163C 0011                287          MOVE.B  #17,D3          
+0000121A  6100 0132                288          BSR SEGMENT7
+0000121E                           289      
+0000121E  163C 0014                290          MOVE.B  #20,D3          
+00001222  6100 012A                291          BSR SEGMENT7
+00001226                           292      
+00001226  163C 0017                293          MOVE.B  #23,D3          
+0000122A  6100 0122                294          BSR SEGMENT7
+0000122E                           295  
+0000122E  163C 000E                296          MOVE.B  #14,D3          
+00001232  6100 011A                297          BSR SEGMENT7
+00001236                           298  
+00001236  163C 001A                299          MOVE.B  #26,D3          
+0000123A  6100 0112                300          BSR SEGMENT7
+0000123E                           301  
+0000123E  163C 000A                302          MOVE.B  #10,D3          
+00001242  6100 010A                303          BSR SEGMENT7
+00001246                           304  
+00001246  163C 000A                305          MOVE.B  #10,D3          
+0000124A  6100 0102                306          BSR SEGMENT7
+0000124E                           307          
+0000124E  16BC 00C0                308          MOVE.B #192,(A3)         2 LEDS LEFT
+00001252                           309          
+00001252  4E75                     310          RTS
+00001254                           311          
+00001254                           312          
+00001254                           313  *-----------------Display Alarm in Segment7 + Alarm Sound--------------
+00001254                           314  ALARM 
+00001254  244C                     315          MOVE.L A4,A2 (adress of segment7)
+00001256  163C 000C                316          MOVE.B  #12,D3          
+0000125A  6100 00F2                317          BSR SEGMENT7
+0000125E  163C 0011                318          MOVE.B  #17,D3          
+00001262  6100 00EA                319          BSR SEGMENT7
+00001266                           320      
+00001266  163C 000C                321          MOVE.B  #12,D3          
+0000126A  6100 00E2                322          BSR SEGMENT7
+0000126E                           323      
+0000126E  163C 0016                324          MOVE.B  #22,D3          
+00001272  6100 00DA                325          BSR SEGMENT7
+00001276                           326  
+00001276  163C 0012                327          MOVE.B  #18,D3          
+0000127A  6100 00D2                328          BSR SEGMENT7
+0000127E                           329  
+0000127E  163C 0012                330          MOVE.B  #18,D3          
+00001282  6100 00CA                331          BSR SEGMENT7
+00001286                           332  
+00001286  163C 000A                333          MOVE.B  #10,D3          
+0000128A  6100 00C2                334          BSR SEGMENT7
+0000128E                           335  
+0000128E  163C 000A                336          MOVE.B  #10,D3          
+00001292  6100 00BA                337          BSR SEGMENT7
+00001296                           338        
+00001296  16BC 0018                339          MOVE.B #24,(A3)          2 LEDS IN MIDDLE
+0000129A                           340        
+0000129A                           341  
+0000129A                           342  ALARM_SOUND 
+0000129A  43FA 01F6                343          LEA AlarmSound(PC),A1
+0000129E  303C 0046                344          MOVE #70,D0
+000012A2  4E4F                     345          TRAP #15
+000012A4                           346        
+000012A4  0C16 0001                347          CMP.B #01,(A6)
+000012A8  67F0                     348          BEQ ALARM_SOUND
+000012AA  4E75                     349          RTS
+000012AC                           350          
+000012AC                           351  
+000012AC                           352  
+000012AC                           353  
+000012AC                           354      
+000012AC                           355  *----------5seconds(for OPEn) + 3 seconds(for CLOSEd) timers------------------
+000012AC                           356  SECONDS_5
+000012AC  244C                     357          MOVE.L A4,A2
+000012AE  D4FC 000E                358          ADD #14,A2
+000012B2  163C 0005                359          MOVE.B  #5,D3       
+000012B6  6100 0096                360          BSR SEGMENT7
+000012BA  6100 0072                361          BSR SECOND_1
+000012BE                           362         
+000012BE  244C                     363          MOVE.L A4,A2
+000012C0  D4FC 000E                364          ADD #14,A2
+000012C4  163C 0004                365          MOVE.B  #4,D3           
+000012C8  6100 0084                366          BSR SEGMENT7
+000012CC  6100 0060                367          BSR SECOND_1
+000012D0                           368         
+000012D0                           369  SECONDS_3
+000012D0  244C                     370         MOVE.L A4,A2    
+000012D2  D4FC 000E                371         ADD #14,A2
+000012D6  163C 0003                372         MOVE.B   #3,D3           
+000012DA  6100 0072                373         BSR  SEGMENT7
+000012DE  6100 004E                374         BSR SECOND_1
+000012E2                           375         
+000012E2  244C                     376         MOVE.L A4,A2
+000012E4  D4FC 000E                377         ADD #14,A2
+000012E8  163C 0002                378         MOVE.B   #2,D3           
+000012EC  6100 0060                379         BSR  SEGMENT7
+000012F0  6100 003C                380         BSR SECOND_1
+000012F4                           381         
+000012F4  244C                     382         MOVE.L A4,A2
+000012F6  D4FC 000E                383         ADD #14,A2
+000012FA  163C 0001                384         MOVE.B   #1,D3       
+000012FE  6100 004E                385         BSR  SEGMENT7
+00001302  6100 002A                386         BSR SECOND_1
+00001306                           387         
+00001306  244C                     388         MOVE.L A4,A2
+00001308  D4FC 000E                389         ADD #14,A2
+0000130C  163C 0000                390         MOVE.B   #0,D3       
+00001310  6100 003C                391         BSR  SEGMENT7
+00001314  6100 0018                392         BSR SECOND_1
+00001318                           393         
+00001318                           394         
+00001318  103C 0020                395         MOVE.B  #32,D0
+0000131C  123C 0003                396         MOVE.B  #3,D1
+00001320  4E4F                     397         TRAP    #15
+00001322  2C41                     398         MOVE.L  D1,A6        A6 = ADRESS OF SWITCH
+00001324  0C16 0001                399         CMP.B #1,(A6)
+00001328  6700 FF2A                400         BEQ ALARM
+0000132C                           401  
+0000132C                           402         
+0000132C  4E75                     403         RTS
+0000132E                           404          
+0000132E                           405  
+0000132E                           406  
+0000132E                           407  
+0000132E                           408  *---------1 second (WE NEED FINAL_TIME - INITIAL_TIME = 100ms)------------
+0000132E                           409  SECOND_1  
+0000132E  4281                     410          CLR.L D1
+00001330  4280                     411          CLR.L D0
+00001332  4282                     412          CLR.L D2
+00001334  303C 0008                413          MOVE #8,D0
+00001338  4E4F                     414          TRAP #15
+0000133A                           415      
+0000133A  2401                     416          MOVE.L D1,D2
+0000133C  0682 00000064            417          ADD.L #100,D2       D2=100ms + INITIAL_TIME
+00001342                           418      
+00001342                           419  BCL     
+00001342  303C 0008                420          MOVE #8,D0          WE'LL REPEAT UNTIL D1 (FINAL TIME) = D2
+00001346  4E4F                     421          TRAP #15    
+00001348  B481                     422          CMP.L D1,D2
+0000134A  66F6                     423          BNE BCL
+0000134C                           424          
+0000134C  4E75                     425          RTS
+0000134E                           426  
+0000134E                           427  
+0000134E                           428  
+0000134E                           429  
+0000134E                           430  
+0000134E                           431               
+0000134E                           432  *------------------------------------
+0000134E                           433  SEGMENT7: 
+0000134E  48E7 1080                434      MOVEM.L D3/A0,-(A7)     SAVE REGISTERS 
+00001352  41F9 0000136A            435      LEA     digits,A0       STARTING ADDRESS OF BIT PATTERN ARRAY TABLE NOW IN A0 
+00001358  C6BC 000000FF            436      AND.L   #$00FF,D3       WE FORCE THE TOP 8 BITS OF D3 TO 0 BY ANDING WITH #$00FF
+0000135E  14B0 3000                437      MOVE.B  (A0,D3),(A2)    DISPLAY DIGIT BY PLACING IN A2 THE CONTENTS OF A0 POSITION VALUE IN D3 E.G (DIGITS,POS 12)
+00001362  548A                     438      ADDA.L  #2,A2 
+00001364  4CDF 0108                439      MOVEM.L (A7)+,D3/A0     RESTORE REGISTERS 
+00001368  4E75                     440      RTS  
+0000136A                           441  
+0000136A                           442  
+0000136A                           443  
+0000136A                           444      
+0000136A                           445      
+0000136A                           446  
+0000136A                           447  digits:*---------------We gonna use this digits label as an array of the needed digits (each digit has his own index)----------
+0000136A                           448  
+0000136A                           449  ************numbers***************    
+0000136A= 3F                       450      dc.b  $3F           0
+0000136B= 06                       451      dc.b  $06           1
+0000136C= 5B                       452      dc.b  $5B           2
+0000136D= 4F                       453      dc.b  $4F           3
+0000136E= 66                       454      dc.b  $66           4
+0000136F= 6D                       455      dc.b  $6D           5
+00001370= 7D                       456      dc.b  $7D           6
+00001371= 07                       457      dc.b  $07           7
+00001372= 7F                       458      dc.b  $7F           8
+00001373= 6F                       459      dc.b  $6F           9
+00001374                           460      
+00001374                           461  
+00001374                           462  ***********none+underscore**************    
+00001374= 00                       463      dc.b  $00           none
+00001375= 40                       464      dc.b  $40           underscore
+00001376                           465      
+00001376                           466      
+00001376                           467      
+00001376                           468  ***********needed letters***************    
+00001376= 77                       469      dc.b  $77           A
+00001377= 39                       470      dc.b  $39           C
+00001378= 79                       471      dc.b  $79           E
+00001379= 76                       472      dc.b  $76           H
+0000137A= 10                       473      dc.b  $10           i
+0000137B= 38                       474      dc.b  $38           L
+0000137C= 54                       475      dc.b  $54           n
+0000137D= 5C                       476      dc.b  $5C           o
+0000137E= 3F                       477      dc.b  $3F           O
+0000137F= 73                       478      dc.b  $73           P
+00001380= 50                       479      dc.b  $50           r
+00001381= 6D                       480      dc.b  $6D           S
+00001382= 70                       481      dc.b  $70           t
+00001383= 1C                       482      dc.b  $1C           u
+00001384= 5E                       483      dc.b  $5E           d
+00001385                           484  
+00001386                           485      ds.w  0             END OF DIGITS ARRAY
+00001386                           486  
+00001386                           487  
+00001386                           488  
+00001386                           489  * variables
+00001386                           490  
+00001386                           491      DS 100
+0000144E                           492  PILE            DS 1
+00001450= 00FF7000                 493  STORAGE         DC.L $0FF7000
+00001454= 30 30 30 30 31 31 ...    494  ACCES_LIST      DC.B '0000','1111','2222',0
+00001461= 0D 0A 45 6E 74 65 ...    495  ENTREZ          DC.B $D,$A,'Enter the valid code (',0
+0000147A= 20 41 54 54 45 4D ...    496  TENTATIVES      DC.B ' ATTEMPS REMAINING): ',0
+00001490                           497  seconds         ds.w    1
+00001492= 61 6C 65 72 74 33 ...    498  AlarmSound      DC.B 'alert3.wav',0
+0000149D                           499  
+0000149D                           500  
+0000149D                           501  
+0000149D                           502      END    START        
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+ACCES_LIST          1454
+ALARM               1254
+ALARMSOUND          1492
+ALARM_SOUND         129A
+BCL                 1342
+CHECK_OUT           112C
+CLOCK               1032
+CLOSE               120C
+COMPARE             117E
+DELAY               0
+DIGITS              136A
+ENTREZ              1461
+HEX2BCD             110E
+MAIN                102E
+NOON                41EB00
+OPEN                11C4
+PILE                144E
+PUSHTHEDOOR         11AA
+REALTIME            1034
+REPEAT              1134
+SECONDS             1490
+SECONDS_3           12D0
+SECONDS_5           12AC
+SECOND_1            132E
+SEGMENT7            134E
+START               1000
+STORAGE             1450
+TENTATIVES          147A
+USER                116C
+VALIDCODE           11A6
+WRONGCODE           1192
+_00000000           104A
+_00000001           1090
+_00000002           10A2
+_00000003           10C8
+_00000004           10F8
+_30000000           1036
